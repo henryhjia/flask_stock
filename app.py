@@ -1,3 +1,7 @@
+"""
+flask app for stock data processing and storage using Google Cloud SQL.
+Oct 12, 2025
+"""
 from dotenv import load_dotenv
 load_dotenv()
 import os
