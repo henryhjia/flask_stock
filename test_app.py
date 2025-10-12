@@ -1,23 +1,63 @@
-import os
-import tempfile
+import sqlite3
 import pytest
 import pandas as pd
-from app import app, init_db
+from app import app
 
-# Fixture to set up a test client and a temporary database
+# SQL to create a schema for the test database
+CREATE_TABLE_SQL = """
+CREATE TABLE stock (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticker TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    max_price REAL NOT NULL,
+    min_price REAL NOT NULL,
+    mean_price REAL NOT NULL,
+    UNIQUE (ticker, start_date, end_date)
+);
+"""
+
 @pytest.fixture
-def client():
-    db_fd, db_path = tempfile.mkstemp()
-    app.config['DATABASE'] = db_path
-    app.config['TESTING'] = True
+def client(mocker):
+    """
+    Test fixture that sets up a test client for the Flask app.
+    It mocks the database connection to use a self-contained, in-memory SQLite
+    database, ensuring tests are isolated and don't depend on external services.
+    """
+    # Use an in-memory SQLite database for testing
+    conn = sqlite3.connect(":memory:")
+    
+    # The app code uses DictCursor, so we set the row_factory
+    conn.row_factory = sqlite3.Row
+    
+    # Create the database schema
+    conn.execute(CREATE_TABLE_SQL)
+    conn.commit()
 
+    # The app code uses '''%s''' placeholders, but sqlite3 uses '?'.
+    # We need to patch the 'execute' method to translate the queries.
+    original_cursor = conn.cursor
+    def mock_cursor_factory():
+        cursor = original_cursor()
+        original_execute = cursor.execute
+        def new_execute(sql, params=()):
+            sql = sql.replace("%s", "?")
+            return original_execute(sql, params)
+        cursor.execute = new_execute
+        return cursor
+    
+    conn.cursor = mock_cursor_factory
+
+    # Patch the get_db_connection function in the app to return our mock connection
+    mocker.patch('app.get_db_connection', return_value=conn)
+
+    app.config['TESTING'] = True
     with app.test_client() as client:
-        with app.app_context():
-            init_db()
         yield client
 
-    os.close(db_fd)
-    os.unlink(db_path)
+    # Clean up the connection after the test
+    conn.close()
+
 
 # Test for the index page
 def test_index(client):
