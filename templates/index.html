@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Data Analyzer</title>
+</head>
+<body>
+    <h1>Stock Data Analyzer</h1>
+    <a href="/history">View History</a>
+    <form action="/process" method="post">
+        <label for="ticker">Stock Ticker:</label>
+        <input type="text" id="ticker" name="ticker" required><br><br>
+        <label for="start_date">Start Date:</label>
+        <input type="date" id="start_date" name="start_date" required><br><br>
+        <label for="end_date">End Date:</label>
+        <input type="date" id="end_date" name="end_date" required><br><br>
+        <input type="submit" value="Submit">
+    </form>
+
+    <h2>Results</h2>
+    <div id="results"></div>
+
+    <script>
+        document.querySelector('form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const response = await fetch('/process', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            const resultsDiv = document.getElementById('results');
+            if (result.error) {
+                resultsDiv.innerHTML = `<p>Error: ${result.error}</p>`;
+            } else {
+                let message = '';
+                if (result.message) {
+                    message = `<p><em>${result.message}</em></p>`;
+                }
+                resultsDiv.innerHTML = `
+                    ${message}
+                    <p>Ticker: ${result.ticker}</p>
+                    <p>Start Date: ${result.start_date}</p>
+                    <p>End Date: ${result.end_date}</p>
+                    <p>Max Price: ${result.max_price.toFixed(2)}</p>
+                    <p>Min Price: ${result.min_price.toFixed(2)}</p>
+                    <p>Mean Price: ${result.mean_price.toFixed(2)}</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

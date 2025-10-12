@@ -1,0 +1,66 @@
+
+steps:
+# 1. Install dependencies
+- name: 'python:3.10'
+  entrypoint: 'pip'
+  args: ['install', '-r', 'requirements.txt', '--user']
+
+# 2. Run tests
+- name: 'python:3.10'
+  entrypoint: 'python'
+  args: ['-m', 'pytest']
+
+# 3. Start the Cloud SQL Auth Proxy
+- name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0'
+  args:
+    - '--quiet'
+    - '--private-ip'
+    - '${_INSTANCE_CONNECTION_NAME}'
+  id: 'start-proxy'
+  waitFor: ['-'] # Start immediately
+
+# 4. Apply database migrations
+- name: 'python:3.10'
+  entrypoint: 'python'
+  args: ['-m', 'yoyo', 'apply']
+  env:
+    - 'DB_USER=${_DB_USER}'
+    - 'DB_PASS=${_DB_PASS}'
+    - 'DB_NAME=${_DB_NAME}'
+  waitFor: ['start-proxy'] # Wait for the proxy to be ready
+
+# 5. Build the container image
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    - 'build'
+    - '-t'
+    - 'us-central1-docker.pkg.dev/$PROJECT_ID/flask-stock-repo/flask-stock-service:$COMMIT_SHA'
+    - '.'
+
+# 6. Push the container image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    - 'push'
+    - 'us-central1-docker.pkg.dev/$PROJECT_ID/flask-stock-repo/flask-stock-service:$COMMIT_SHA'
+
+# 7. Deploy to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: 'gcloud'
+  args:
+    - 'run'
+    - 'deploy'
+    - 'flask-stock-service'
+    - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/flask-stock-repo/flask-stock-service:$COMMIT_SHA'
+    - '--region=us-central1'
+    - '--allow-unauthenticated'
+    - '--set-env-vars=INSTANCE_CONNECTION_NAME=${_INSTANCE_CONNECTION_NAME},DB_NAME=${_DB_NAME},DB_USER=${_DB_USER},DB_PASS=${_DB_PASS}'
+
+# Define user-defined variables
+substitutions:
+  _INSTANCE_CONNECTION_NAME: 'flask-stock-app-2025:us-central1:flask-stock-db-instance'
+  _DB_NAME: 'flask_stock_db'
+  _DB_USER: 'stock_user'
+  # _DB_PASS should be set as a secret variable in the trigger
+
+images:
+- 'us-central1-docker.pkg.dev/$PROJECT_ID/flask-stock-repo/flask-stock-service:$COMMIT_SHA'

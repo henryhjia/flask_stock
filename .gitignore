@@ -1,0 +1,13 @@
+
+# Environment variables
+.env
+README.md
+README_setup_gcloud.md
+README_cicd.md
+venv/
+__pycache__/
+.pytest_cache/
+*.db
+instance/
+*.sqlite3
+*.log
