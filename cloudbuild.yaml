@@ -64,3 +64,6 @@ substitutions:
 
 images:
 - 'us-central1-docker.pkg.dev/$PROJECT_ID/flask-stock-repo/flask-stock-service:$COMMIT_SHA'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
