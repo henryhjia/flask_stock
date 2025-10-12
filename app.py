@@ -84,7 +84,6 @@ def process():
         return jsonify({'error': str(e)}), 500
     finally:
         cur.close()
-        conn.close()
 
 @app.route('/history')
 def history():
@@ -94,7 +93,6 @@ def history():
     columns = [col[0] for col in cur.description]
     stocks = [dict(zip(columns, row)) for row in cur.fetchall()]
     cur.close()
-    conn.close()
     return render_template('history.html', stocks=stocks)
 
 if __name__ == '__main__':
