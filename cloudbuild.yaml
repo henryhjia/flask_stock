@@ -19,6 +19,9 @@ steps:
   args:
   - '-c'
   - |
+    # Explicitly fetch the database password from Secret Manager
+    export DB_PASS=$$(gcloud secrets versions access latest --secret=DB_PASS)
+
     echo "--- Installing migration tools ---"
     python3 -m pip install yoyo-migrations pg8000 --break-system-packages
     echo "--- Downloading Cloud SQL Proxy ---"
@@ -32,7 +35,6 @@ steps:
     yoyo apply
   env:
     - 'DB_USER=${_DB_USER}'
-    - 'DB_PASS=${_DB_PASS}'
     - 'DB_NAME=${_DB_NAME}'
   waitFor: ['run-tests']
 
