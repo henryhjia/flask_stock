@@ -1,5 +1,32 @@
 steps:
-# 1. Build the container image
+# 1. Install dependencies
+- name: 'python:3.10'
+  id: 'install-deps'
+  entrypoint: 'pip'
+  args: ['install', '-r', 'requirements.txt', '--user']
+
+# 2. Run tests
+- name: 'python:3.10'
+  id: 'run-tests'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      apt-get update && apt-get install -y postgresql-client
+      export PATH=$$PATH:/usr/lib/postgresql/17/bin
+      mkdir -p /var/run/postgresql
+      chown -R postgres:postgres /var/run/postgresql
+      mkdir /tmp/db
+      chown -R postgres:postgres /tmp/db
+      sudo -u postgres initdb -D /tmp/db
+      sudo -u postgres pg_ctl -D /tmp/db -l /tmp/db/logfile start
+      sleep 5
+      sudo -u postgres createdb test
+      python -m pytest
+      sudo -u postgres pg_ctl -D /tmp/db stop
+  waitFor: ['install-deps']
+
+# 3. Build the container image
 - name: 'gcr.io/cloud-builders/docker'
   id: 'build-image'
   args:
@@ -7,8 +34,9 @@ steps:
     - '-t'
     - 'us-central1-docker.pkg.dev/$PROJECT_ID/flask-stock-repo/flask-stock-service:$COMMIT_SHA'
     - '.'
+  waitFor: ['run-tests']
 
-# 2. Push the container image to Artifact Registry
+# 4. Push the container image to Artifact Registry
 - name: 'gcr.io/cloud-builders/docker'
   id: 'push-image'
   args:
@@ -16,7 +44,7 @@ steps:
     - 'us-central1-docker.pkg.dev/$PROJECT_ID/flask-stock-repo/flask-stock-service:$COMMIT_SHA'
   waitFor: ['build-image']
 
-# 3. Deploy to Cloud Run
+# 5. Deploy to Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'deploy-service'
   entrypoint: 'gcloud'
