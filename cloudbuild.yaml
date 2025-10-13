@@ -10,12 +10,12 @@ steps:
   entrypoint: 'python'
   args: ['-m', 'pytest']
 
-# 3. Start the Cloud SQL Auth Proxy
+# 3. Start the Cloud SQL Auth Proxy in the background
 - name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0'
+  entrypoint: 'sh'
   args:
-    - '--quiet'
-    - '--private-ip'
-    - '${_INSTANCE_CONNECTION_NAME}'
+    - '-c'
+    - '/cloud-sql-proxy --quiet --private-ip ${_INSTANCE_CONNECTION_NAME} & sleep 5'
   id: 'start-proxy'
   waitFor: ['-'] # Start immediately
 
