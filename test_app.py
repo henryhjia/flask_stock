@@ -1,18 +1,12 @@
-"""
-use postgreSQL for testing
-GCP trigger is modified. 
-
-"""
+import sqlite3
 import pytest
 import pandas as pd
 from app import app
-import psycopg2
-import os
 
 # SQL to create a schema for the test database
 CREATE_TABLE_SQL = """
 CREATE TABLE stock (
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     ticker TEXT NOT NULL,
     start_date TEXT NOT NULL,
     end_date TEXT NOT NULL,
@@ -27,31 +21,58 @@ CREATE TABLE stock (
 def client(mocker):
     """
     Test fixture that sets up a test client for the Flask app.
-    It connects to the test database using environment variables.
+    It mocks the database connection to use a self-contained, in-memory SQLite
+    database, ensuring tests are isolated and don't depend on external services.
     """
-    # Set environment variables for the app to connect to the test database
-    os.environ["INSTANCE_CONNECTION_NAME"] = "127.0.0.1"
-    os.environ["DB_USER"] = "postgres"
-    os.environ["DB_PASS"] = ""
-    os.environ["DB_NAME"] = "test"
+    # This is the real database connection that will hold our test data
+    real_conn = sqlite3.connect(":memory:")
+    real_conn.row_factory = sqlite3.Row
+    real_conn.execute(CREATE_TABLE_SQL)
+    real_conn.commit()
 
-    # Create the stock table in the temporary database
-    conn = psycopg2.connect(host="127.0.0.1", user="postgres", password="", dbname="test")
-    cur = conn.cursor()
-    cur.execute(CREATE_TABLE_SQL)
-    conn.commit()
-    cur.close()
-    conn.close()
+    # This is a mock connection object that we can control
+    mock_conn = mocker.MagicMock()
 
-    # Mock the get_db_connection function to connect to the test database
-    def mock_get_db_connection():
-        return psycopg2.connect(host="127.0.0.1", user="postgres", password="", dbname="test")
+    # This factory will be called every time the app asks for a cursor
+    def mock_cursor_factory():
+        real_cursor = real_conn.cursor()
+        mock_cursor = mocker.MagicMock()
 
-    mocker.patch('app.get_db_connection', side_effect=mock_get_db_connection)
+        # Implement the 'execute' method for our mock cursor
+        def mock_execute(sql, params=()):
+            # Translate the SQL parameter style from '''%s''' to '?'
+            sql = sql.replace("%s", "?")
+            return real_cursor.execute(sql, params)
+
+        # Wire up the mock cursor's methods to the real cursor
+        mock_cursor.execute.side_effect = mock_execute
+        mock_cursor.fetchone.side_effect = real_cursor.fetchone
+        mock_cursor.fetchall.side_effect = real_cursor.fetchall
+        mock_cursor.close.side_effect = real_cursor.close
+        mock_cursor.__iter__ = real_cursor.__iter__
+        
+        # Wire up the 'description' attribute
+        type(mock_cursor).description = mocker.PropertyMock(side_effect=lambda: real_cursor.description)
+
+        return mock_cursor
+
+    # When the app calls .cursor(), execute our factory to get the patched cursor
+    mock_conn.cursor.side_effect = mock_cursor_factory
+    
+    # Pass through other necessary methods to the real connection
+    mock_conn.commit.side_effect = real_conn.commit
+    mock_conn.close.side_effect = real_conn.close
+
+    # Patch the get_db_connection function in the app to return our mock connection
+    mocker.patch('app.get_db_connection', return_value=mock_conn)
 
     app.config['TESTING'] = True
     with app.test_client() as client:
         yield client
+
+    # Clean up the real connection after the test
+    real_conn.close()
+
 
 # Test for the index page
 def test_index(client):
