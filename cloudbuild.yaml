@@ -20,7 +20,7 @@ steps:
   - '-c'
   - |
     echo "--- Installing migration tools ---"
-    pip install --user yoyo-migrations pg8000
+    python3 -m pip install --user yoyo-migrations pg8000
     echo "--- Downloading Cloud SQL Proxy ---"
     curl -o /workspace/cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.linux.amd64
     chmod +x /workspace/cloud-sql-proxy
