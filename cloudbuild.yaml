@@ -8,8 +8,12 @@ steps:
 # 2. Run tests
 - name: 'python:3.10'
   id: 'run-tests'
-  entrypoint: 'python'
-  args: ['-m', 'pytest']
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      apt-get update && apt-get install -y postgresql-client
+      python -m pytest
   waitFor: ['install-deps']
 
 # 3. Build the container image
