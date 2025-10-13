@@ -34,7 +34,7 @@ steps:
     echo "--- Applying database migrations ---"
     # Construct the database URI and pass it directly to the command
     DB_URI="postgresql://${_DB_USER}@127.0.0.1:5432/${_DB_NAME}"
-    yoyo apply --database "${DB_URI}" ./migrations
+    yoyo apply --database "$${DB_URI}" ./migrations
   env:
     - 'DB_USER=${_DB_USER}'
     - 'DB_NAME=${_DB_NAME}'
