@@ -13,6 +13,8 @@ steps:
     - '-c'
     - |
       apt-get update && apt-get install -y postgresql-client
+      find / -name initdb
+      export PATH=$PATH:/usr/lib/postgresql/13/bin
       python -m pytest
   waitFor: ['install-deps']
 
