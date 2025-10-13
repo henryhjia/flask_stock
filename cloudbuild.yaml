@@ -1,7 +1,7 @@
 steps:
-# 1. Install dependencies for testing
+# 1. Install dependencies
 - name: 'python:3.10'
-  id: 'install-test-deps'
+  id: 'install-deps'
   entrypoint: 'pip'
   args: ['install', '-r', 'requirements.txt', '--user']
 
@@ -10,37 +10,9 @@ steps:
   id: 'run-tests'
   entrypoint: 'python'
   args: ['-m', 'pytest']
-  waitFor: ['install-test-deps']
+  waitFor: ['install-deps']
 
-# 3. Download proxy, start it, and run migrations
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  id: 'migrate-database'
-  entrypoint: 'bash'
-  args:
-  - '-c'
-  - |
-    # Explicitly fetch the database password from Secret Manager
-    export DB_PASS=$$(gcloud secrets versions access latest --secret=DB_PASS)
-
-    echo "--- Installing migration tools ---"
-    python3 -m pip install yoyo-migrations pg8000 --break-system-packages
-    echo "--- Downloading Cloud SQL Proxy ---"
-    curl -o /workspace/cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.linux.amd64
-    chmod +x /workspace/cloud-sql-proxy
-    echo "--- Starting Cloud SQL Proxy in background ---"
-    /workspace/cloud-sql-proxy --quiet --private-ip ${_INSTANCE_CONNECTION_NAME} &
-    echo "--- Waiting for proxy to initialize (5s) ---"
-    sleep 5
-    echo "--- Applying database migrations ---"
-    # Construct the database URI and pass it directly to the command
-    DB_URI="postgresql://${_DB_USER}:${DB_PASS}@127.0.0.1:5432/${_DB_NAME}"
-    yoyo apply --database "${DB_URI}" ./migrations
-  env:
-    - 'DB_USER=${_DB_USER}'
-    - 'DB_NAME=${_DB_NAME}'
-  waitFor: ['run-tests']
-
-# 4. Build the container image
+# 3. Build the container image
 - name: 'gcr.io/cloud-builders/docker'
   id: 'build-image'
   args:
@@ -48,9 +20,9 @@ steps:
     - '-t'
     - 'us-central1-docker.pkg.dev/$PROJECT_ID/flask-stock-repo/flask-stock-service:$COMMIT_SHA'
     - '.'
-  waitFor: ['migrate-database']
+  waitFor: ['run-tests']
 
-# 5. Push the container image to Artifact Registry
+# 4. Push the container image to Artifact Registry
 - name: 'gcr.io/cloud-builders/docker'
   id: 'push-image'
   args:
@@ -58,7 +30,7 @@ steps:
     - 'us-central1-docker.pkg.dev/$PROJECT_ID/flask-stock-repo/flask-stock-service:$COMMIT_SHA'
   waitFor: ['build-image']
 
-# 6. Deploy to Cloud Run
+# 5. Deploy to Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'deploy-service'
   entrypoint: 'gcloud'
