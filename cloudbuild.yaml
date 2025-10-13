@@ -18,12 +18,12 @@ steps:
       chown -R postgres:postgres /var/run/postgresql
       mkdir /tmp/db
       chown -R postgres:postgres /tmp/db
-      sudo -u postgres initdb -D /tmp/db
-      sudo -u postgres pg_ctl -D /tmp/db -l /tmp/db/logfile start
+      su - postgres -c "initdb -D /tmp/db"
+      su - postgres -c "pg_ctl -D /tmp/db -l /tmp/db/logfile start"
       sleep 5
-      sudo -u postgres createdb test
+      su - postgres -c "createdb test"
       python -m pytest
-      sudo -u postgres pg_ctl -D /tmp/db stop
+      su - postgres -c "pg_ctl -D /tmp/db stop"
   waitFor: ['install-deps']
 
 # 3. Build the container image
