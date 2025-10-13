@@ -6,7 +6,6 @@ GCP trigger is modified.
 import pytest
 import pandas as pd
 from app import app
-import testing.postgresql
 import psycopg2
 import os
 
@@ -28,33 +27,31 @@ CREATE TABLE stock (
 def client(mocker):
     """
     Test fixture that sets up a test client for the Flask app.
-    It creates a temporary PostgreSQL database and sets the necessary
-    environment variables for the app to connect to it.
+    It connects to the test database using environment variables.
     """
-    with testing.postgresql.Postgresql() as postgresql:
-        # Create the stock table in the temporary database
-        conn = psycopg2.connect(**postgresql.dsn())
-        cur = conn.cursor()
-        cur.execute(CREATE_TABLE_SQL)
-        conn.commit()
-        cur.close()
-        conn.close()
+    # Set environment variables for the app to connect to the test database
+    os.environ["INSTANCE_CONNECTION_NAME"] = "127.0.0.1"
+    os.environ["DB_USER"] = "postgres"
+    os.environ["DB_PASS"] = ""
+    os.environ["DB_NAME"] = "test"
 
-        # Set environment variables for the app to connect to the test database
-        os.environ["INSTANCE_CONNECTION_NAME"] = postgresql.dsn()['host']
-        os.environ["DB_USER"] = postgresql.dsn()['user']
-        os.environ["DB_PASS"] = postgresql.dsn()['password']
-        os.environ["DB_NAME"] = postgresql.dsn()['dbname']
-        
-        # Mock the get_db_connection function to connect to the test database
-        def mock_get_db_connection():
-            return psycopg2.connect(**postgresql.dsn())
+    # Create the stock table in the temporary database
+    conn = psycopg2.connect(host="127.0.0.1", user="postgres", password="", dbname="test")
+    cur = conn.cursor()
+    cur.execute(CREATE_TABLE_SQL)
+    conn.commit()
+    cur.close()
+    conn.close()
 
-        mocker.patch('app.get_db_connection', side_effect=mock_get_db_connection)
+    # Mock the get_db_connection function to connect to the test database
+    def mock_get_db_connection():
+        return psycopg2.connect(host="127.0.0.1", user="postgres", password="", dbname="test")
 
-        app.config['TESTING'] = True
-        with app.test_client() as client:
-            yield client
+    mocker.patch('app.get_db_connection', side_effect=mock_get_db_connection)
+
+    app.config['TESTING'] = True
+    with app.test_client() as client:
+        yield client
 
 # Test for the index page
 def test_index(client):

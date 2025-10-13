@@ -14,7 +14,16 @@ steps:
     - |
       apt-get update && apt-get install -y postgresql-client
       export PATH=$$PATH:/usr/lib/postgresql/17/bin
+      mkdir -p /var/run/postgresql
+      chown -R postgres:postgres /var/run/postgresql
+      mkdir /tmp/db
+      chown -R postgres:postgres /tmp/db
+      sudo -u postgres initdb -D /tmp/db
+      sudo -u postgres pg_ctl -D /tmp/db -l /tmp/db/logfile start
+      sleep 5
+      sudo -u postgres createdb test
       python -m pytest
+      sudo -u postgres pg_ctl -D /tmp/db stop
   waitFor: ['install-deps']
 
 # 3. Build the container image
