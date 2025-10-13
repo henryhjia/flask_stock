@@ -33,11 +33,12 @@ steps:
     sleep 5
     echo "--- Applying database migrations ---"
     # Construct the database URI and pass it directly to the command
-    DB_URI="postgresql://${_DB_USER}:${DB_PASS}@127.0.0.1:5432/${_DB_NAME}"
+    DB_URI="postgresql://${_DB_USER}@127.0.0.1:5432/${_DB_NAME}"
     yoyo apply --database "${DB_URI}" ./migrations
   env:
     - 'DB_USER=${_DB_USER}'
     - 'DB_NAME=${_DB_NAME}'
+    - 'DB_PASS=${DB_PASS}'
   waitFor: ['run-tests']
 
 # 4. Build the container image
