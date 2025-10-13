@@ -20,7 +20,7 @@ steps:
   - '-c'
   - |
     echo "--- Installing migration tools ---"
-    python3 -m pip install --user yoyo-migrations pg8000
+    python3 -m pip install yoyo-migrations pg8000 --break-system-packages
     echo "--- Downloading Cloud SQL Proxy ---"
     curl -o /workspace/cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.linux.amd64
     chmod +x /workspace/cloud-sql-proxy
@@ -29,7 +29,7 @@ steps:
     echo "--- Waiting for proxy to initialize (5s) ---"
     sleep 5
     echo "--- Applying database migrations ---"
-    /root/.local/bin/yoyo apply
+    yoyo apply
   env:
     - 'DB_USER=${_DB_USER}'
     - 'DB_PASS=${_DB_PASS}'
