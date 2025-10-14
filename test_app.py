@@ -1,64 +1,29 @@
-import sqlite3
 import pytest
 import pandas as pd
-from app import app
-
-# SQL to create a schema for the test database
-CREATE_TABLE_SQL = """
-CREATE TABLE stock (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ticker TEXT NOT NULL,
-    start_date TEXT NOT NULL,
-    end_date TEXT NOT NULL,
-    max_price REAL NOT NULL,
-    min_price REAL NOT NULL,
-    mean_price REAL NOT NULL,
-    UNIQUE (ticker, start_date, end_date)
-);
-"""
+from app import app, init_db, db_pool
 
 @pytest.fixture
-def client(mocker):
-    """
-    Test fixture that sets up a test client for the Flask app.
-    It mocks the database connection to use a self-contained, in-memory SQLite
-    database, ensuring tests are isolated and don't depend on external services.
-    """
-    # This is the real database connection that will hold our test data
-    real_conn = sqlite3.connect(":memory:")
-    real_conn.row_factory = sqlite3.Row
-    real_conn.execute(CREATE_TABLE_SQL)
-    real_conn.commit()
-
-    # Patch the get_db_connection function in the app to return our mock connection
-    mocker.patch('app.get_db_connection', return_value=real_conn)
-
+def client():
     app.config['TESTING'] = True
     with app.test_client() as client:
+        with app.app_context():
+            init_db()
         yield client
 
-    # Clean up the real connection after the test
-    real_conn.close()
-
-
-# Test for the index page
 def test_index(client):
     """Test the index page."""
-    rv = client.get('/')
-    assert rv.status_code == 200
-    assert b'Stock Data Analyzer' in rv.data
+    response = client.get('/')
+    assert response.status_code == 200
+    assert b'Stock Data Analyzer' in response.data
 
-# Test for the history page
 def test_history(client):
     """Test the history page."""
-    rv = client.get('/history')
-    assert rv.status_code == 200
-    assert b'Stock Data History' in rv.data
+    response = client.get('/history')
+    assert response.status_code == 200
+    assert b'Stock Data History' in response.data
 
-# Test processing a new stock
-def test_process_new(client, mocker):
-    """Test processing a new stock ticker."""
-    # Mock yfinance.download
+def test_process_new_stock(client, mocker):
+    """Test processing a new stock."""
     mock_data = pd.DataFrame({'Close': [100, 150, 125]})
     mocker.patch('yfinance.download', return_value=mock_data)
 
@@ -75,35 +40,31 @@ def test_process_new(client, mocker):
     assert json_data['min_price'] == 100.0
     assert json_data['mean_price'] == 125.0
 
-# Test processing a duplicate stock
-def test_process_duplicate(client, mocker):
-    """Test processing a duplicate stock ticker."""
-    # Mock yfinance.download
+def test_process_existing_stock(client, mocker):
+    """Test processing an existing stock."""
     mock_data = pd.DataFrame({'Close': [100, 150, 125]})
     mocker.patch('yfinance.download', return_value=mock_data)
 
-    # First request to insert the data
+    # First request
     client.post('/process', data={
         'ticker': 'GOOG',
-        'start_date': '2023-02-01',
-        'end_date': '2023-02-28'
+        'start_date': '2023-01-01',
+        'end_date': '2023-01-31'
     })
 
     # Second request with the same data
     response = client.post('/process', data={
         'ticker': 'GOOG',
-        'start_date': '2023-02-01',
-        'end_date': '2023-02-28'
+        'start_date': '2023-01-01',
+        'end_date': '2023-01-31'
     })
 
     assert response.status_code == 200
     json_data = response.get_json()
     assert 'Data already exists' in json_data['message']
 
-# Test for case where no data is found
 def test_process_no_data(client, mocker):
-    """Test processing when no data is found for the ticker."""
-    # Mock yfinance.download to return an empty DataFrame
+    """Test processing with no data from yfinance."""
     mocker.patch('yfinance.download', return_value=pd.DataFrame())
 
     response = client.post('/process', data={
