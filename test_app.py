@@ -30,41 +30,8 @@ def client(mocker):
     real_conn.execute(CREATE_TABLE_SQL)
     real_conn.commit()
 
-    # This is a mock connection object that we can control
-    mock_conn = mocker.MagicMock()
-
-    # This factory will be called every time the app asks for a cursor
-    def mock_cursor_factory():
-        real_cursor = real_conn.cursor()
-        mock_cursor = mocker.MagicMock()
-
-        # Implement the 'execute' method for our mock cursor
-        def mock_execute(sql, params=()):
-            # Translate the SQL parameter style from '''%s''' to '?'
-            sql = sql.replace("%s", "?")
-            return real_cursor.execute(sql, params)
-
-        # Wire up the mock cursor's methods to the real cursor
-        mock_cursor.execute.side_effect = mock_execute
-        mock_cursor.fetchone.side_effect = real_cursor.fetchone
-        mock_cursor.fetchall.side_effect = real_cursor.fetchall
-        mock_cursor.close.side_effect = real_cursor.close
-        mock_cursor.__iter__ = real_cursor.__iter__
-        
-        # Wire up the 'description' attribute
-        type(mock_cursor).description = mocker.PropertyMock(side_effect=lambda: real_cursor.description)
-
-        return mock_cursor
-
-    # When the app calls .cursor(), execute our factory to get the patched cursor
-    mock_conn.cursor.side_effect = mock_cursor_factory
-    
-    # Pass through other necessary methods to the real connection
-    mock_conn.commit.side_effect = real_conn.commit
-    mock_conn.close.side_effect = real_conn.close
-
     # Patch the get_db_connection function in the app to return our mock connection
-    mocker.patch('app.get_db_connection', return_value=mock_conn)
+    mocker.patch('app.get_db_connection', return_value=real_conn)
 
     app.config['TESTING'] = True
     with app.test_client() as client:

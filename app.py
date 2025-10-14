@@ -1,29 +1,38 @@
 """
-flask app for stock data processing and storage using Google Cloud SQL.
-Oct 12, 2025
+flask app for stock data processing and storage using SQLite.
 """
-from dotenv import load_dotenv
-load_dotenv()
+import sqlite3
 import os
 from flask import Flask, render_template, request, jsonify
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from google.cloud.sql.connector import Connector
-
 
 app = Flask(__name__)
 
 def get_db_connection():
-    connector = Connector()
-    conn = connector.connect(
-        os.environ["INSTANCE_CONNECTION_NAME"],  # e.g. "project:region:instance"
-        "pg8000",
-        user=os.environ["DB_USER"],
-        password=os.environ["DB_PASS"].strip(),
-        db=os.environ["DB_NAME"],
-    )
+    conn = sqlite3.connect('instance/flask_stock.sqlite')
+    conn.row_factory = sqlite3.Row
     return conn
+
+def init_db():
+    with app.app_context():
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS stock (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker TEXT NOT NULL,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL,
+                max_price REAL NOT NULL,
+                min_price REAL NOT NULL,
+                mean_price REAL NOT NULL,
+                UNIQUE (ticker, start_date, end_date)
+            );
+        """)
+        conn.commit()
+        conn.close()
 
 @app.route('/')
 def index():
@@ -39,12 +48,11 @@ def process():
     cur = conn.cursor()
 
     try:
-        cur.execute('SELECT * FROM stock WHERE ticker = %s AND start_date = %s AND end_date = %s', (ticker, start_date, end_date))
+        cur.execute('SELECT * FROM stock WHERE ticker = ? AND start_date = ? AND end_date = ?', (ticker, start_date, end_date))
         row = cur.fetchone()
         existing_stock = None
         if row:
-            columns = [col[0] for col in cur.description]
-            existing_stock = dict(zip(columns, row))
+            existing_stock = dict(row)
 
         if existing_stock:
             return jsonify({
@@ -67,7 +75,7 @@ def process():
 
         cur.execute('''
             INSERT INTO stock (ticker, start_date, end_date, max_price, min_price, mean_price)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, ?, ?, ?)
         ''', (ticker, start_date, end_date, max_price, min_price, mean_price))
         conn.commit()
 
@@ -82,20 +90,19 @@ def process():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    finally:
-        cur.close()
 
 @app.route('/history')
 def history():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute('SELECT * FROM stock ORDER BY id DESC')
-    columns = [col[0] for col in cur.description]
-    stocks = [dict(zip(columns, row)) for row in cur.fetchall()]
+    stocks = [dict(row) for row in cur.fetchall()]
     cur.close()
+    return render_template('history.html', stocks=stocks)
     return render_template('history.html', stocks=stocks)
 
 if __name__ == '__main__':
-    # The init_db() function should be called manually or with a separate script
-    # when using a persistent database like PostgreSQL.
+    # Ensure the instance folder exists
+    os.makedirs('instance', exist_ok=True)
+    init_db()
     app.run(debug=True)
