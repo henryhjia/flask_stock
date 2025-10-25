@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from app import app, init_db, db_pool
+from app import app, init_db, get_db_connection, release_db_connection, _test_sqlite_conn
 
 @pytest.fixture
 def client():
@@ -9,6 +9,11 @@ def client():
         with app.app_context():
             init_db()
         yield client
+        # Teardown: Close the SQLite connection after each test
+        global _test_sqlite_conn
+        if _test_sqlite_conn:
+            _test_sqlite_conn.close()
+            _test_sqlite_conn = None
 
 def test_index(client):
     """Test the index page."""
