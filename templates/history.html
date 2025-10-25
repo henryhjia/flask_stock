@@ -1,53 +1,45 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Data History</title>
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid #dddddd;
-            text-align: left;
-            padding: 8px;
-        }
-        tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-    </style>
-</head>
-<body>
-    <h1>Stock Data History</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Ticker</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Max Price</th>
-                <th>Min Price</th>
-                <th>Mean Price</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for stock in stocks %}
-            <tr>
-                <td>{{ stock['id'] }}</td>
-                <td>{{ stock['ticker'] }}</td>
-                <td>{{ stock['start_date'] }}</td>
-                <td>{{ stock['end_date'] }}</td>
-                <td>{{ "%.2f"|format(stock['max_price']) }}</td>
-                <td>{{ "%.2f"|format(stock['min_price']) }}</td>
-                <td>{{ "%.2f"|format(stock['mean_price']) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+{% extends "base.html" %}
+
+{% block title %}Stock Data History{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Stock Data History</h1>
+
+    {% if stocks %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Ticker</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Max Price</th>
+                    <th>Min Price</th>
+                    <th>Mean Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stock in stocks %}
+                <tr>
+                    <td>{{ stock['id'] }}</td>
+                    <td>{{ stock['ticker'] }}</td>
+                    <td>{{ stock['start_date'] }}</td>
+                    <td>{{ stock['end_date'] }}</td>
+                    <td>{{ "%.2f"|format(stock['max_price']) }}</td>
+                    <td>{{ "%.2f"|format(stock['min_price']) }}</td>
+                    <td>{{ "%.2f"|format(stock['mean_price']) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info" role="alert">
+        No stock data in history yet. Go to <a href="/" class="alert-link">Home</a> to analyze some stocks.
+    </div>
+    {% endif %}
+
     <br>
-    <a href="/">Back to Main Page</a>
-</body>
-</html>
+    <a href="/" class="btn btn-primary">Back to Main Page</a>
+{% endblock %}

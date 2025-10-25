@@ -1,29 +1,53 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Data Analyzer</title>
-</head>
-<body>
-    <h1>Stock Data Analyzer</h1>
-    <a href="/history">View History</a>
-    <form action="/process" method="post">
-        <label for="ticker">Stock Ticker:</label>
-        <input type="text" id="ticker" name="ticker" required><br><br>
-        <label for="start_date">Start Date:</label>
-        <input type="date" id="start_date" name="start_date" required><br><br>
-        <label for="end_date">End Date:</label>
-        <input type="date" id="end_date" name="end_date" required><br><br>
-        <input type="submit" value="Submit">
+{% extends "base.html" %}
+
+{% block title %}Stock Data Analyzer{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Stock Data Analyzer</h1>
+
+    <div class="mb-4">
+        <a href="/history" class="btn btn-info">View History</a>
+    </div>
+
+    <form id="stock-form" class="needs-validation" novalidate>
+        <div class="mb-3">
+            <label for="ticker" class="form-label">Stock Ticker:</label>
+            <input type="text" class="form-control" id="ticker" name="ticker" required>
+            <div class="invalid-feedback">
+                Please provide a stock ticker.
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="start_date" class="form-label">Start Date:</label>
+            <input type="date" class="form-control" id="start_date" name="start_date" required>
+            <div class="invalid-feedback">
+                Please provide a start date.
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="end_date" class="form-label">End Date:</label>
+            <input type="date" class="form-control" id="end_date" name="end_date" required>
+            <div class="invalid-feedback">
+                Please provide an end date.
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
     </form>
 
-    <h2>Results</h2>
-    <div id="results"></div>
+    <h2 class="mt-5">Results</h2>
+    <div id="results" class="mt-3 p-3 border rounded bg-light">
+        <p>Submit a query to see results here.</p>
+    </div>
 
     <script>
-        document.querySelector('form').addEventListener('submit', async (e) => {
+        document.getElementById('stock-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            e.target.classList.add('was-validated');
+
+            if (!e.target.checkValidity()) {
+                return;
+            }
+
             const formData = new FormData(e.target);
             const response = await fetch('/process', {
                 method: 'POST',
@@ -31,24 +55,25 @@
             });
             const result = await response.json();
             const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = ''; // Clear previous results
+
             if (result.error) {
-                resultsDiv.innerHTML = `<p>Error: ${result.error}</p>`;
+                resultsDiv.innerHTML = `<div class="alert alert-danger">Error: ${result.error}</div>`;
             } else {
                 let message = '';
                 if (result.message) {
-                    message = `<p><em>${result.message}</em></p>`;
+                    message = `<p class="text-success"><em>${result.message}</em></p>`;
                 }
                 resultsDiv.innerHTML = `
                     ${message}
-                    <p>Ticker: ${result.ticker}</p>
-                    <p>Start Date: ${result.start_date}</p>
-                    <p>End Date: ${result.end_date}</p>
-                    <p>Max Price: ${result.max_price.toFixed(2)}</p>
-                    <p>Min Price: ${result.min_price.toFixed(2)}</p>
-                    <p>Mean Price: ${result.mean_price.toFixed(2)}</p>
+                    <p><strong>Ticker:</strong> ${result.ticker}</p>
+                    <p><strong>Start Date:</strong> ${result.start_date}</p>
+                    <p><strong>End Date:</strong> ${result.end_date}</p>
+                    <p><strong>Max Price:</strong> ${result.max_price.toFixed(2)}</p>
+                    <p><strong>Min Price:</strong> ${result.min_price.toFixed(2)}</p>
+                    <p><strong>Mean Price:</strong> ${result.mean_price.toFixed(2)}</p>
                 `;
             }
         });
     </script>
-</body>
-</html>
+{% endblock %}
