@@ -11,6 +11,9 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import sqlite3 # Import sqlite3
+import matplotlib.pyplot as plt # Import matplotlib
+import io # Import io for BytesIO
+import base64 # Import base64 for encoding
 
 app = Flask(__name__)
 
@@ -72,7 +75,8 @@ def init_db():
                     mean_price REAL NOT NULL,
                     UNIQUE (ticker, start_date, end_date)
                 );
-            """)
+            """
+            )
         else:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS stock (
@@ -85,7 +89,8 @@ def init_db():
                     mean_price REAL NOT NULL,
                     UNIQUE (ticker, start_date, end_date)
                 );
-            """)
+            """
+            )
         conn.commit()
         cur.close()
     finally:
@@ -132,6 +137,24 @@ def process():
             min_price = float(np.min(data['Close']))
             mean_price = float(np.mean(data['Close']))
 
+            # Generate plot
+            plt.figure(figsize=(10, 5))
+            plt.plot(data.index, data['Close'])
+            plt.title(f'{ticker} Stock Price')
+            plt.xlabel('Date')
+            plt.ylabel('Close Price')
+            plt.grid(True)
+            plt.tight_layout()
+
+            # Save plot to a BytesIO object
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png')
+            plt.close() # Close the figure to free memory
+            buf.seek(0)
+
+            # Encode to base64
+            plot_base64 = base64.b64encode(buf.read()).decode('utf-8')
+
             cur.execute(
                 '''
                 INSERT INTO stock (ticker, start_date, end_date, max_price, min_price, mean_price)
@@ -148,7 +171,8 @@ def process():
                 'end_date': end_date,
                 'max_price': max_price,
                 'min_price': min_price,
-                'mean_price': mean_price
+                'mean_price': mean_price,
+                'plot_base64': plot_base64 # Include plot data
             })
         else:
             with conn.cursor() as cur:
@@ -173,6 +197,24 @@ def process():
                 min_price = float(np.min(data['Close']))
                 mean_price = float(np.mean(data['Close']))
 
+                # Generate plot
+                plt.figure(figsize=(10, 5))
+                plt.plot(data.index, data['Close'])
+                plt.title(f'{ticker} Stock Price')
+                plt.xlabel('Date')
+                plt.ylabel('Close Price')
+                plt.grid(True)
+                plt.tight_layout()
+
+                # Save plot to a BytesIO object
+                buf = io.BytesIO()
+                plt.savefig(buf, format='png')
+                plt.close() # Close the figure to free memory
+                buf.seek(0)
+
+                # Encode to base64
+                plot_base64 = base64.b64encode(buf.read()).decode('utf-8')
+
                 cur.execute(
                     '''
                     INSERT INTO stock (ticker, start_date, end_date, max_price, min_price, mean_price)
@@ -188,7 +230,8 @@ def process():
                     'end_date': end_date,
                     'max_price': max_price,
                     'min_price': min_price,
-                    'mean_price': mean_price
+                    'mean_price': mean_price,
+                    'plot_base64': plot_base64 # Include plot data
                 })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

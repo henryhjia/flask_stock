@@ -35,7 +35,8 @@
     </form>
 
     <h2 class="mt-5">Results</h2>
-    <div id="results" class="mt-3 p-3 border rounded bg-light">
+    <div id="plot-pane" class="mt-4 text-center"></div>
+    <div id="results" class="mt-3 p-3 border rounded bg-light" style="font-family: monospace;">
         <p>Submit a query to see results here.</p>
     </div>
 
@@ -55,7 +56,10 @@
             });
             const result = await response.json();
             const resultsDiv = document.getElementById('results');
+            const plotPane = document.getElementById('plot-pane');
+
             resultsDiv.innerHTML = ''; // Clear previous results
+            plotPane.innerHTML = ''; // Clear previous plot
 
             if (result.error) {
                 resultsDiv.innerHTML = `<div class="alert alert-danger">Error: ${result.error}</div>`;
@@ -66,13 +70,23 @@
                 }
                 resultsDiv.innerHTML = `
                     ${message}
-                    <p><strong>Ticker:</strong> ${result.ticker}</p>
-                    <p><strong>Start Date:</strong> ${result.start_date}</p>
-                    <p><strong>End Date:</strong> ${result.end_date}</p>
-                    <p><strong>Max Price:</strong> ${result.max_price.toFixed(2)}</p>
-                    <p><strong>Min Price:</strong> ${result.min_price.toFixed(2)}</p>
-                    <p><strong>Mean Price:</strong> ${result.mean_price.toFixed(2)}</p>
+                    <dl style="display: grid; grid-template-columns: max-content 1fr; row-gap: 0; column-gap: 1rem;">
+                        <dt>Ticker:</dt><dd>${result.ticker}</dd>
+                        <dt>Start Date:</dt><dd>${result.start_date}</dd>
+                        <dt>End Date:</dt><dd>${result.end_date}</dd>
+                        <dt>Max Price:</dt><dd>${result.max_price.toFixed(2)}</dd>
+                        <dt>Min Price:</dt><dd>${result.min_price.toFixed(2)}</dd>
+                        <dt>Mean Price:</dt><dd>${result.mean_price.toFixed(2)}</dd>
+                    </dl>
                 `;
+
+                if (result.plot_base64) {
+                    const img = document.createElement('img');
+                    img.src = `data:image/png;base64,${result.plot_base64}`;
+                    img.alt = `${result.ticker} Stock Price Plot`;
+                    img.classList.add('img-fluid'); // Make image responsive
+                    plotPane.appendChild(img);
+                }
             }
         });
     </script>
