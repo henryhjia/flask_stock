@@ -139,7 +139,7 @@ def process():
 
             # Generate plot
             plt.figure(figsize=(10, 5))
-            plt.plot(data.index, data['Close'])
+            plt.plot(data.index, data['Close'], marker='o')
             plt.title(f'{ticker} Stock Price')
             plt.xlabel('Date')
             plt.ylabel('Close Price')
@@ -199,7 +199,7 @@ def process():
 
                 # Generate plot
                 plt.figure(figsize=(10, 5))
-                plt.plot(data.index, data['Close'])
+                plt.plot(data.index, data['Close'], marker='o')
                 plt.title(f'{ticker} Stock Price')
                 plt.xlabel('Date')
                 plt.ylabel('Close Price')
