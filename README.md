@@ -16,6 +16,15 @@ Users can also:
 - **View** the history of stored stock data.
 - **Delete** individual entries from the database.
 
+## API Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET    | /        | Home page showing stock data form and stored history |
+| POST   | /process | Retrieve data from Yahoo Finance and calculate statistics |
+| GET    | /history | Display all previously stored stock analyses |
+| DELETE | /delete_stock/<id> | Remove a specific entry from the database |
+
+
 ## Running the Application Locally
 
 1. Activate the virtual environment
