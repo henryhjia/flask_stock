@@ -45,5 +45,5 @@ python app.py
 ```
 
 4. Open the app in your browser
-Visit http://127.0.0.1:5000
+Visit [http://127.0.0.1:5000](http://127.0.0.1:5000)
  to access Stock Data Analyzer.
