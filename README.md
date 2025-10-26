@@ -2,6 +2,8 @@
 ## Project Overview
 
 **Stock Data Analyzer** is a Flask-based web application that uses a **RESTful API** to retrieve and analyze historical stock data from **Yahoo Finance.**
+The application is developed with the help of **AI-assisted programming** using **Gemini**, which helped streamline coding and improve efficiency.
+
 Given a **stock ticker** and a **date range**, the app:
 
 - Fetches historical stock prices from Yahoo Finance.
